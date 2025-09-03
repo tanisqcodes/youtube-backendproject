@@ -2,7 +2,7 @@
     constructor(
         statusCode,
         message = "something went wrong", 
-        error = [], 
+        errors = [], 
         stack=""
 
 
@@ -17,7 +17,7 @@
             this.stack = stack 
 
         }else{
-            Error.captureStatckTrace(this, this.constructor )
+            Error.captureStackTrace(this, this.constructor )
         }
 
     }

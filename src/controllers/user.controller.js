@@ -221,10 +221,85 @@ const refreshAccessToken = asyncHandler(async(req, res) => {
  }
 })
 
-export {registerUser, loginUser, logoutUser
+const changeCurrentPassword = asyncHandler(async(req, res) => {  //uses auth.middleware
+    const {oldPassword, newPassword, confirmPassword} = req.body 
+
+    if(!(newPassword  === confirmPassword)){
+      throw new ApiError(500 , "enter same password in both fields")
+    }
+    // we'll run auth.middleware to check if user is logged in pull in userId from there
+  const user =  await User.findById( req.user?._id )
+   // checking if the oldPassword entered is correct
+  const isPasswordCorrect = await user.isPasswordCorrect(oldPassword)
+  if(!isPasswordCorrect){
+    throw new ApiError(400 ,"Invalid Old Password" )
+
+  }
+user.password = newPassword
+await user.save({validateBeforeSave: false})
+
+return res.status(200)
+.json( new ApiResponse(200 , {}, "Password changed successfully"))
 
 
 
+})
+
+const getCurrentUse = asyncHandler( async(req, res) => { 
+  if( req.user?.id){
+    return res.status(200)
+    .json(
+      200, req.user, "current user fetched successfully" 
+    ) 
+
+  }
+  throw new ApiError()
+})
+
+const updateAccountDetails = asyncHandler( async( req, res) => { 
+  const {fullName , email } = req.body
+  if( !fullName || !email ){
+    throw new ApiError(400, "all fields are required")
+  }
+  const user = User.findByIdAndUpdate(
+    req.user?._id, { 
+      $set: { 
+        fullName : fullName , 
+        email: email
+      }
+
+    }, 
+    {
+      new: true
+    }
+  ).select( "-password")
+
+  return res.status(200),json(
+    new ApiResponse(200, "Account details updated successfully ")
+  )
+})
+const updateUserAvatar = asyncHandler(async( req, res )=> { // we'll use multer middleware
+  // which will give us req.files , here one file is present 
+
+  // we'll also have to use the auth.middleware to get to know the current user to 
+  // upload the avatar in database
+ const avatarLocalPath =  req.files?.path
+ const userid = req.user?._id
+ if( !avatarLocalPath){
+  throw new ApiError(400, " avatar file is missing")
+ }
+const avatar =  await uploadOnCloudinary(avatarLocalPath)
+if( !(avatar?.url) ){
+throw new ApiError(400 , "error while uploading on cloudinary")
+}
+})
+await User.findByI
+if( userid ){
+  throw new ApiError(400 , "userId could not be found for updating the avatar")
+}
 
 
+
+export {registerUser, loginUser, logoutUser, refreshAccessToken, changeCurrentPassword
+  , getCurrentUse, updateAccountDetails
 }

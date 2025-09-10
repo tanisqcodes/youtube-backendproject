@@ -1,8 +1,9 @@
 import {Router} from "express"; 
-import {registerUser} from "../controllers/user.controller.js"
+import {loginUser, logoutUser,refreshAccessToken, updateUserAvatar, changeCurrentPassword, getCurrentUser, registerUser, updateAccountDetails, updateUserCoverImage, getUserChannelProfile, getWatchHistory} from "../controllers/user.controller.js"
 import upload from "../middlewares/multer.middleware.js"
-import {loginUser} from "../controllers/user.controller.js"
+
 // import {ApiError} from "../utils/ApiError.js"
+import { verifyJWT } from "../middlewares/auth.middleware.js";
 
 
 
@@ -17,7 +18,24 @@ import {loginUser} from "../controllers/user.controller.js"
 
  }]), registerUser)
  router.route("/login").post(loginUser)
+ 
 
+
+
+
+
+
+
+ // secured routes 
+ router.route("/logout").post(verifyJWT, logoutUser)
+ router.route("refresh-token").post(refreshAccessToken)
+ router.route("/change-password").post(verifyJWT, changeCurrentPassword)
+ router.route("/current-user").post(verifyJWT, getCurrentUser)
+ router.route("/update-account").patch(verifyJWT, updateAccountDetails)
+ router.route("/avatar").patch(verifyJWT, upload.single("avatar"), updateUserAvatar)
+ router.route("/cover-Image").patch(verifyJWT,upload.single("coverImage"), updateUserCoverImage)
+ router.route("/c/:username").get(verifyJWT, getUserChannelProfile)                            // taking info from req.params, :username is important , /c  OR /channel is our choice
+ router.route("/history").get(verifyJWT, getWatchHistory)
 
 
 

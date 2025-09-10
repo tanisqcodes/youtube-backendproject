@@ -3,22 +3,33 @@ import { User } from "../models/user.model.js";
 import {uploadOnCloudinary} from "../utils/cloudinary.js"
 import {ApiResponse} from "../utils/ApiResponse.js"
 import {ApiError} from "../utils/ApiError.js"
-import {mongoose} from "mongoose"
-import jwt from "jwt"
+import mongoose from "mongoose"
+import jwt from "jsonwebtoken"
 
 
 // we will take userId by user 
 const generateAccessAndRefreshTokens = async(userId) => {
   try{
    const user = await User.findById(userId)
-   const accessToken = await user.generateAccessToken()
+   /* try{
+    console.log("user in generate method: ", user)
+   }catch(error){
+    console.log(error)
+   } 
+    */ 
+   const accessToken = await user.generateAccessToken()  //  fails here
    const refreshToken = await user.generateRefreshToken()
+   console.log("generate method: ")
+   console.log(user , accessToken , refreshToken)
 
-   user.refreshToken = refreshToken
-  await  user.save({validateBeforeSave: false})
-  return {accessToken, refreshToken}
+
+     user.refreshToken = refreshToken
+    await  user.save({validateBeforeSave: false})
+    return {accessToken, refreshToken}
+  
 
   }catch(error){
+    console.log(error)
     throw new ApiError(500 , 
       "something went wrog while generating refresh and access token")
   }
@@ -126,6 +137,7 @@ if( !(username || email)){
 }
 
 const user = await User.findOne({$or: [{username}, {email}]})
+// console.log("user: ", user)
 
 if(!user){ throw new ApiError(404, "User does not exist")}
 
@@ -394,7 +406,7 @@ const getUserChannelProfile = asyncHandler( async(req, res) => {
     }, 
       isSubscribed: {
       $cond: {
-        if: {$in:[req.user?._id], "$subscribers" }, 
+        if: {$in:[req.user?._id,"$subscribers" ]},
         then: true, 
         else: false
 
@@ -429,8 +441,59 @@ return res.status(200).json(
 
 })
 
+const getWatchHistory = asyncHandler( async(req, res) => { 
+ const user = await User.aggregate([
+{
+  $match: { 
+    _id: new mongoose.Types.ObjectId(req.user._id)
+  }
+}, {
+  $lookup: {
+    from: "videos", 
+    localField: "watchHistory", 
+    foreignField: "_id", 
+    as: "watchHistory", 
+    pipeline: [ // nested aggregation
+      {
+          $lookup: {
+            from: "users", 
+            localField: "owner", 
+            foreignField: "_id", 
+            as: "owner",
+            pipeline: [
+              {
+                $project: {
+                  fullName: 1, 
+                  username:1 , 
+                  avatar: 1 
+
+                }
+              }, { 
+                $addFields: { 
+                  owner: {
+                  $first: "$owner"
+                  }
+                }
+              }
+
+            ]       
+             }
+      }
+    ]
+
+  }
+}
+
+ ])
+
+ return res.status( 200)
+ .json(
+  new ApiResponse(200, user[0].watchHistory, "watch history fetched for user successfully")
+ )
+})
+
 
 
 export {registerUser, loginUser, logoutUser, refreshAccessToken, changeCurrentPassword
-  , getCurrentUser, updateAccountDetails, updateUserAvatar, updateUserCoverImage
+  , getCurrentUser, updateAccountDetails, updateUserAvatar, updateUserCoverImage, getUserChannelProfile, getWatchHistory
 }
